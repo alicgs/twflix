@@ -18,6 +18,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import Cast from "../components/cast";
 import MovieList from "../components/movieList";
 import Loading from "../components/loading";
+import { fetchMovieCredits, fetchMovieDetails, fetchSimilarMovies, image500 } from "../api/moviedb";
 
 const { width, height } = Dimensions.get("window");
 const ios = Platform.OS === "ios";
@@ -27,13 +28,36 @@ export default function MovieScreen() {
   const { params: item } = useRoute();
   const [isFavourite, toggleFavourite] = useState(false);
   const navigation = useNavigation();
-  const [cast, setCast] = useState([1, 2, 3, 4, 5]);
-  const [similarMovies, setSimilarMovies] = useState([1, 2, 3, 4, 5]);
+  const [cast, setCast] = useState([]);
+  const [similarMovies, setSimilarMovies] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [movie, setMovie] = useState({});
   let movieName = "Ant-Man and the Wasp: Quantumania";
+
   useEffect(() => {
-    // Call the movie details api
+    //console.log('itemid:', item.id)
+    setLoading(true);
+    getMovieDetails(item.id);
+    getMovieCredits(item.id);
+    getSimilarMovies(item.id);
   }, [item]);
+
+  const getMovieDetails = async id=>{
+    const data = await fetchMovieDetails(id);
+    //console.log('got movie details: ', data);
+    if(data) setMovie(data);
+    setLoading(false);
+  }
+
+const getMovieCredits = async id=>{
+  const data = await fetchMovieCredits(id);
+  if(data && data.cast) setCast(data.cast);
+}
+const getSimilarMovies = async id=>{
+  const data = await fetchSimilarMovies(id);
+  if(data && data.results) setSimilarMovies(data.results);
+}
+
   return (
     <ScrollView
       contentContainerStyle={{ paddingBottom: 20 }}
@@ -66,7 +90,8 @@ export default function MovieScreen() {
         ) : (
           <View>
             <Image
-              source={require("../../assets/image/ant-man.jpg")}
+              //source={require("../../assets/image/ant-man.jpg")}
+              source={{uri: image500(movie?.poster_path)}}
               style={{ width, height: height * 0.55 }}
             />
             <LinearGradient
@@ -82,36 +107,44 @@ export default function MovieScreen() {
       {/* movie details */}
       <View style={{ marginTop: -(height * 0.09) }} className="space-y-3">
         <Text className="text-white text-center text-3xl font-bold tracking-wider">
-          {movieName}
+          {
+            movie?.title
+          }
         </Text>
+        {
+          movie?.id?(
+            <Text className="text-neutral-400 font-semibold text-base text-center">
+          {movie?.status} · {movie?.release_date?.split('-')[0]} · {movie?.runtime} min
+        </Text>
+          ):null
+        }
         {/* status */}
-        <Text className="text-neutral-400 font-semibold text-base text-center">
-          Released · 2020 · 170 min
-        </Text>
+        
 
         {/* genres */}
         <View className="flex-row justify-center mx-4 space-x-2">
-          <Text className="text-neutral-400 font-semibold text-base text-center">
-            Action ·
-          </Text>
-          <Text className="text-neutral-400 font-semibold text-base text-center">
+          {
+            movie?.genres?.map((genre,index)=>{
+              let showDot = index+1 != movie.genres.length;
+              return (
+                <Text key={index} className="text-neutral-400 font-semibold text-base text-center">
+                       {genre?.name} {showDot? "·": null}
+                 </Text>
+              )
+            })
+          }
+          
+         {/*  <Text className="text-neutral-400 font-semibold text-base text-center">
             Thrill ·
           </Text>
           <Text className="text-neutral-400 font-semibold text-base text-center">
             Comedy
-          </Text>
+          </Text> */}
         </View>
         <Text className="text-neutral-400 mx-4 tracking-wide ">
-          "Ant-Man and the Wasp: Quantumania" follows the adventures of Ant-Man
-          who, along with his family, suddenly finds himself in the Quantum
-          Realm. After the events of "Avengers: Endgame", Ant-Man has become
-          quite popular among people and is enjoying his fame. However, things
-          take a turn when his daughter Cassie sends a signal to the Quantum
-          Realm using a device she created, plunging them into an entirely new
-          world. Joining him in this extraordinary universe are his family
-          members Hope, her father Hank Pym, and her mother Janet Van Dyne. As
-          the family explores the Quantum Realm, they encounter extraordinary
-          creatures along the way.
+          {
+            movie?.overview
+          }
         </Text>
       </View>
       {/* cast */}
@@ -122,7 +155,7 @@ export default function MovieScreen() {
         title="Similar Movies"
         hideSeeAll={true}
         data={similarMovies}
-      />
+      /> 
     </ScrollView>
   );
 }
